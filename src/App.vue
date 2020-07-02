@@ -50,7 +50,7 @@
                 framesElapsed: 0,
                 stop: false,
                 then: 0,
-                fps: 20,
+                fps: 30,
                 snake: {
                     w: 1,
                     h: 1,
@@ -114,7 +114,7 @@
                         break;
                     case "KeyR":
                         console.log("## Resetting")
-                        this.reset()
+                        this.reset("Manual Reset")
                         break;
                 }
             },
@@ -126,9 +126,16 @@
                     this.food.c, "#FF0000")
             },
             newFood() {
+
                 this.food.r = this.getRandomInt(this.cols)
                 this.food.c = this.getRandomInt(this.rows)
-                console.log("New food: ", this.food.r, this.food.c)
+
+                // This is very inefficient..
+                this.snake.history.forEach( v => {
+                    if (v.r === this.food.r && v.c === this.food.c ) {
+                         this.newFood()
+                    }
+                })
             },
             randLocation() {
                 return {r: this.getRandomInt(this.cols), c: this.getRandomInt(this.rows)}
@@ -150,10 +157,8 @@
 
             },
             growSnake() {
-                console.log("Before GROWING: ", JSON.stringify(this.snake.history))
                 let tail = this.snake.history[0]
                 this.snake.history.unshift(tail)
-                console.log("After GROWING: ", JSON.stringify(this.snake.history))
             },
             drawSnake() {
                 this.snake.history.forEach((v) => {
@@ -226,18 +231,31 @@
                 this.setCanvasWidth()
                 this.setCanvasHeight()
             },
-            reset() {
-                console.log("DEAD")
+            reset(msg) {
+                console.log(msg)
                 this.newSnake()
                 this.paused = true
             },
-            checkWalls() {
+            checkWallTouch() {
                 let head = this.snake.history[this.snake.history.length - 1]
                 if (head.r < 0 || head.r >= this.cols) {
-                    this.reset()
+                    this.reset("Wall Touch")
 
                 } else if (head.c < 0 || head.c >= this.rows)
-                    this.reset()
+                    this.reset("Wall Touch")
+
+            },
+            checkBodyTouch() {
+                let head = this.snake.history[this.snake.history.length - 1]
+                if (this.snake.history.length < 4) {
+                    return
+                }
+                for (let i = 0; i<this.snake.history.length - 1; i++ ) {
+                    if (this.snake.history[i].r === head.r && this.snake.history[i].c === head.c) {
+                        this.reset("Body Touch")
+                    }
+                }
+
 
             },
             gameLoop() {
@@ -260,9 +278,14 @@
 
                 this.moveSnake()
                 this.drawSnake()
-                this.checkWalls()
+                this.checkWallTouch()
+                this.checkBodyTouch()
 
                 if (this.consumed()) {
+                    // this.dx += 1
+                    // this.dy += 1
+                    this.growSnake()
+                    this.growSnake()
                     this.growSnake()
                     this.newFood()
                 }
