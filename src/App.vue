@@ -3,7 +3,7 @@
         <canvas @keydown="keyDown" tabindex='1' ref="canvas"></canvas>
 
         <div> Movement: WASD</div>
-        <div> Length: {{ this.snake_.length }}</div>
+        <div> Length: {{ this.snake.length }}</div>
         <div> Size: {{this.max_width}}, {{this.max_height}}</div>
 
         <div>WIDTH
@@ -39,22 +39,19 @@
         data() {
             return {
                 paused: true,
-                reset: false,
                 max_width: 500,
                 max_height: 500,
-                food: {x: 0, y: 0},
-                direction: [0, -1],
-                rows: 25,
-                cols: 25,
+                accept_movement: true,
+                food: {r: 0, c: 0},
+                dx: 0,
+                dy: 1,
+                rows: 100,
+                cols: 100,
                 framesElapsed: 0,
                 stop: false,
                 then: 0,
-                fps: 5,
-                snakeHead: {
-                    pos: {r: 5, c: 5}
-                },
-                snake: [],
-                snake_: {
+                fps: 20,
+                snake: {
                     w: 1,
                     h: 1,
                     color: "#00FF00",
@@ -65,23 +62,12 @@
         },
         computed: {
             gridsize_w() {
-              return Math.floor(this.max_width  / this.cols)
+                return Math.floor(this.max_width / this.cols)
             },
             gridsize_h() {
-              return Math.floor(this.max_height  / this.rows)
+                return Math.floor(this.max_height / this.rows)
             },
-            width() {
-                if ( this.gridsize * this.cols > this.max_width) {
-                    return this.max_width
-                }
-                return this.gridsize * this.cols
-            },
-            height() {
-                if (this.gridsize * this.rows > this.max_height) {
-                    return this.max_height
-                }
-                return this.gridsize * this.rows
-            },
+
             fpsInterval() {
                 return 1000 / this.fps
             }
@@ -92,35 +78,43 @@
                 switch (e.code) {
                     case "KeyW":
                         console.log("up")
-                        if (this.direction[1] === 0) {
-                            this.direction = [0, -1]
+                        if (this.dy === 0 && this.accept_movement) {
+                            this.dy = -1
+                            this.dx = 0
                         }
+                        this.accept_movement = false
                         break;
                     case "KeyD":
                         console.log("right")
-                        if (this.direction[0] === 0) {
-                            this.direction = [1, 0]
+                        if (this.dx === 0 && this.accept_movement) {
+                            this.dx = 1
+                            this.dy = 0
                         }
+                        this.accept_movement = false
                         break;
                     case "KeyA":
                         console.log("left")
-                        if (this.direction[0] === 0) {
-                            this.direction = [-1, 0]
+                        if (this.dx === 0 && this.accept_movement) {
+                            this.dx = -1
+                            this.dy = 0
                         }
+                        this.accept_movement = false
                         break;
                     case "KeyS":
                         console.log("down")
-                        if (this.direction[1] === 0) {
-                            this.direction = [0, 1]
+                        if (this.dy === 0 && this.accept_movement) {
+                            this.dy = 1
+                            this.dx = 0
                         }
+                        this.accept_movement = false
                         break;
                     case "KeyC":
                         this.paused = !this.paused
                         console.log("paused: ", this.paused)
                         break;
                     case "KeyR":
-                        this.reset = true
-                        console.log("Resetting: ", this.paused)
+                        console.log("## Resetting")
+                        this.reset()
                         break;
                 }
             },
@@ -128,41 +122,42 @@
                 return Math.floor(Math.random() * Math.floor(max));
             },
             drawFood() {
-                this.fillSquare(this.food.x,
-                    this.food.y, "#FF0000")
+                this.fillSquare(this.food.r,
+                    this.food.c, "#FF0000")
             },
             newFood() {
-                this.food.x = this.getRandomInt(this.cols)
-                this.food.y = this.getRandomInt(this.rows)
-                console.log("New food: ", this.food.x, this.food.y)
+                this.food.r = this.getRandomInt(this.cols)
+                this.food.c = this.getRandomInt(this.rows)
+                console.log("New food: ", this.food.r, this.food.c)
             },
-
+            randLocation() {
+                return {r: this.getRandomInt(this.cols), c: this.getRandomInt(this.rows)}
+            },
+            newSnake() {
+                this.snake.history = []
+                this.snake.history.push(this.randLocation())
+            },
             moveSnake() {
-                let ln = this.snake_.history.length
-                if (ln === 0) {
+                let ln = this.snake.history.length
+                if (this.snakelength === 0) {
                     return
                 }
-
-                for (let i=0; i < ln; i++) {
-                    if (i + 1 === ln) {
-                        continue
-                    }
-                    console.log("Move:  ", this.snake_.history[i], this.snake_.history[i+1])
-                    this.snake_.history[i] = this.snake_.history[i + 1]
-                }
-                this.snake_.history[ln - 1].pos.r += this.direction[0];
-                this.snake_.history[ln - 1].pos.c += this.direction[1];
+                let head = this.snake.history[ln - 1]
+                this.snake.history.push(head)
+                this.snake.history.shift()
+                // add to last element
+                this.snake.history[ln - 1] = {r: head.r + this.dx, c: head.c + this.dy};
 
             },
             growSnake() {
-                this.snake_.history.unshift(this.snake_.history[0])
-
+                console.log("Before GROWING: ", JSON.stringify(this.snake.history))
+                let tail = this.snake.history[0]
+                this.snake.history.unshift(tail)
+                console.log("After GROWING: ", JSON.stringify(this.snake.history))
             },
             drawSnake() {
-
-                this.snake_.history.forEach((v, i) => {
-                    console.log(i, " SNAKE: ", v.pos.r , v.pos.c)
-                    this.fillSquare(v.pos.r , v.pos.c, this.snake_.color)
+                this.snake.history.forEach((v) => {
+                    this.fillSquare(v.r, v.c, this.snake.color)
                 })
             },
             clear() {
@@ -174,10 +169,10 @@
                 )
             },
             consumed() {
-                let ln = this.snake_.history.length
-                return this.snake_.history[ln - 1].pos.r === this.food.x && this.snake_.history[ln- 1].pos.c === this.food.y;
+                let ln = this.snake.history.length
+                return this.snake.history[ln - 1].r === this.food.r && this.snake.history[ln - 1].c === this.food.c;
             },
-            drawGrid() {
+            pauseScreen() {
                 // horizontal lines
                 for (let r = 0; r < this.rows; r++) {
                     let y = r * this.gridsize_h
@@ -196,11 +191,23 @@
                     this.$ctx.lineTo(x, this.max_height);
                     this.$ctx.stroke();
                 }
-                this.fillSquare(9, 5, "black")
+                this.$ctx.fillStyle = "black"
+                this.$ctx.font = '50px serif';
+                this.$ctx.fillText("Press C to start",
+                    Math.floor(50),
+                    Math.floor(this.max_height / 2)
+                )
             },
             fillSquare(r, c, color) {
-                this.$ctx.fillStyle=color
+                this.$ctx.fillStyle = color
                 this.$ctx.fillRect(
+                    r * this.gridsize_w,
+                    c * this.gridsize_h,
+                    this.gridsize_w,
+                    this.gridsize_h,
+                )
+                this.$ctx.strokeStyle = "black"
+                this.$ctx.strokeRect(
                     r * this.gridsize_w,
                     c * this.gridsize_h,
                     this.gridsize_w,
@@ -215,58 +222,63 @@
                 this.$canvas.height = this.max_height
                 console.log("height set to: ", this.$canvas.height)
             },
-            rescale(){
+            rescale() {
                 this.setCanvasWidth()
-                    this.setCanvasHeight()
+                this.setCanvasHeight()
+            },
+            reset() {
+                console.log("DEAD")
+                this.newSnake()
+                this.paused = true
+            },
+            checkWalls() {
+                let head = this.snake.history[this.snake.history.length - 1]
+                if (head.r < 0 || head.r >= this.cols) {
+                    this.reset()
+
+                } else if (head.c < 0 || head.c >= this.rows)
+                    this.reset()
+
             },
             gameLoop() {
                 window.requestAnimationFrame(this.gameLoop)
-                if (this.reset) {
-                    console.log("Resetting")
-                    this.reset = false
-                }
+                let now = Date.now()
+                let elapsed = now - this.then;
                 if (this.paused) {
                     // Draw grid with rectangles when paused
                     this.clear()
-                    this.drawGrid()
+                    this.pauseScreen()
                     return
                 }
-                let now = Date.now()
-                let elapsed = now - this.then;
-                if (elapsed > this.fpsInterval) {
-                    this.framesElapsed += 1
-                    // console.log(`### Count. Elapsed: ${elapsed} ms | Frame ${this.framesElapsed}`)
-                    this.clear()
-
-                    this.drawSnake()
-                    this.moveSnake()
-                    if (this.consumed()) {
-                        this.growSnake()
-                        this.newFood()
-                    }
-                    console.log("Food: ", this.food.x, this.food.y )
-                    this.drawFood()
-                    this.then = now - (elapsed % this.fpsInterval);
-
-                } else {
-                    // console.log("No Count")
+                if (elapsed <= this.fpsInterval) {
+                    return
                 }
+                this.framesElapsed += 1
+                // console.log(`### Count. Elapsed: ${elapsed} ms | Frame ${this.framesElapsed}`)
+                this.clear()
+                this.accept_movement = true
+
+                this.moveSnake()
+                this.drawSnake()
+                this.checkWalls()
+
+                if (this.consumed()) {
+                    this.growSnake()
+                    this.newFood()
+                }
+                this.drawFood()
+                this.then = now - (elapsed % this.fpsInterval);
+
             }
         },
         mounted() {
             this.$canvas = this.$refs["canvas"]
             this.setCanvasWidth()
             this.setCanvasHeight()
-
-
             this.$ctx = this.$canvas.getContext('2d')
 
-            console.log(this.rows * this.gridsize_w)
-            console.log(this.cols * this.gridsize_h)
-
-            this.snake_.history.push(this.snakeHead)
-            console.log(this.snake_.history)
             this.newFood()
+            this.newSnake()
             this.gameLoop()
 
 
