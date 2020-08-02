@@ -50,7 +50,7 @@
                 framesElapsed: 0,
                 stop: false,
                 then: 0,
-                fps: 30,
+                fps: 15,
                 snake: {
                     w: 1,
                     h: 1,
@@ -73,40 +73,55 @@
             }
         },
         methods: {
+            setDirection(wasd) {
+                console.log("Setting Direction: ", wasd)
+                if (wasd === "W") {
+                    this.dy = -1
+                    this.dx = 0
+                }
+                if (wasd === "A") {
+                    this.dy = 0
+                    this.dx = -1
+                }
+                if (wasd === "S") {
+                    this.dy = 1
+                    this.dx = 0
+                }
+                if (wasd === "D") {
+                    this.dx = 1
+                    this.dy = 0
+                }
+            },
             keyDown(e) {
                 // Handling input
                 switch (e.code) {
+                    case "KeyO":
+                        console.log("Sending Message to Server")
+                        this.$ws.send("KeyO")
+                        break;
                     case "KeyW":
-                        console.log("up")
                         if (this.dy === 0 && this.accept_movement) {
-                            this.dy = -1
-                            this.dx = 0
+                            this.$ws.send("KeyW")
                         }
-                        this.accept_movement = false
+                        // this.accept_movement = false
                         break;
                     case "KeyD":
-                        console.log("right")
                         if (this.dx === 0 && this.accept_movement) {
-                            this.dx = 1
-                            this.dy = 0
+                            this.$ws.send("KeyD")
                         }
-                        this.accept_movement = false
+                        // this.accept_movement = false
                         break;
                     case "KeyA":
-                        console.log("left")
                         if (this.dx === 0 && this.accept_movement) {
-                            this.dx = -1
-                            this.dy = 0
+                            this.$ws.send("KeyA")
                         }
-                        this.accept_movement = false
+                        // this.accept_movement = false
                         break;
                     case "KeyS":
-                        console.log("down")
                         if (this.dy === 0 && this.accept_movement) {
-                            this.dy = 1
-                            this.dx = 0
+                            this.$ws.send("KeyS")
                         }
-                        this.accept_movement = false
+                        // this.accept_movement = false
                         break;
                     case "KeyC":
                         this.paused = !this.paused
@@ -146,7 +161,7 @@
             },
             moveSnake() {
                 let ln = this.snake.history.length
-                if (this.snakelength === 0) {
+                if (this.snake.length === 0) {
                     return
                 }
                 let head = this.snake.history[ln - 1]
@@ -295,6 +310,23 @@
             }
         },
         mounted() {
+            this.$ws = new WebSocket("ws://192.168.1.33:9000/ws", "protocolOne");
+            this.$ws.onclose = () => {
+                console.log("WS closed")
+            }
+            this.$ws.onopen = () => {
+                console.log("WS opened")
+            }
+            this.$ws.onmessage = (m) => {
+                console.log("WS message received: ")
+                console.log(m.data)
+                this.setDirection(m.data[m.data.length -1])
+            }
+            this.$ws.onerror = (err) => {
+                console.log("WS Error")
+                console.log(err)
+            }
+            console.log(this.$ws)
             this.$canvas = this.$refs["canvas"]
             this.setCanvasWidth()
             this.setCanvasHeight()
